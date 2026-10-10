@@ -1,10 +1,87 @@
 services:
-  dashboard:
+  kafka:
+    image: apache/kafka:3.9.1
+    environment:
+      CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    environment:
+      CLUSTER_NAME: sellpulse
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: 1
+      HDFS_CONF_dfs_namenode_name_dir: file:///hadoop/dfs/name
+    ports:
+      - "9870:9870"
+    volumes:
+      - namenode-data:/hadoop/dfs/name
+    restart: unless-stopped
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    environment:
+      SERVICE_PRECONDITION: namenode:9870
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: 1
+    depends_on:
+      - namenode
+    volumes:
+      - datanode-data:/hadoop/dfs/data
+    restart: unless-stopped
+
+  pipeline:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "8501:8501"
+    command: ["/bin/bash", "/app/scheduler/run-pipeline.sh"]
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      MAPRED_CONF_mapreduce_framework_name: local
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: sales-transactions
+      SALES_CSV: /app/data/sales.csv
+      HDFS_URL: http://namenode:9870
+      HDFS_INPUT_DIR: /sales/input
+      HADOOP_HOME: /opt/hadoop-3.2.1
+      SCHEDULER_INTERVAL_SECONDS: 60
+    depends_on:
+      kafka:
+        condition: service_healthy
+      namenode:
+        condition: service_started
+      datanode:
+        condition: service_started
     volumes:
-      - ./results:/app/results:ro
+      - ./data:/app/data:ro
+      - ./results:/app/results
     restart: unless-stopped
+
+volumes:
+  kafka-data:
+  namenode-data:
+  datanode-data:

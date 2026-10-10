@@ -2,3 +2,5 @@
 streamlit
 pandas
 plotly
+hdfs==2.7.3
+kafka-python==2.0.2
