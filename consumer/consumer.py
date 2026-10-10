@@ -50,7 +50,7 @@ def connect_hdfs():
 def main():
     hdfs = connect_hdfs()
     consumer = connect_kafka()
-    print(f"Consuming '{TOPIC}' and writing transaction files to HDFS.")
+    print("Consuming '{}' and writing transaction files to HDFS.".format(TOPIC))
 
     try:
         for message in consumer:
@@ -62,18 +62,21 @@ def main():
                 units = int(transaction["units_sold"])
             except (KeyError, TypeError, ValueError) as error:
                 raise ValueError(
-                    f"Invalid transaction at Kafka offset {message.offset}."
+                    "Invalid transaction at Kafka offset {}.".format(message.offset)
                 ) from error
             if not product or units < 0 or "\t" in product or "\n" in product:
                 raise ValueError(
-                    f"Invalid transaction at Kafka offset {message.offset}."
+                    "Invalid transaction at Kafka offset {}.".format(message.offset)
                 )
 
             filename = (
-                f"{quote(message.topic, safe='')}-"
-                f"{message.partition}-{message.offset}.json"
+                "{}-{}-{}.json".format(
+                    quote(message.topic, safe=""),
+                    message.partition,
+                    message.offset,
+                )
             )
-            path = f"{HDFS_INPUT_DIR.rstrip('/')}/{filename}"
+            path = "{}/{}".format(HDFS_INPUT_DIR.rstrip("/"), filename)
             with hdfs.write(path, encoding="utf-8", overwrite=True) as output:
                 transaction["product_name"] = product
                 transaction["units_sold"] = units
@@ -81,7 +84,7 @@ def main():
                 output.write("\n")
 
             consumer.commit()
-            print(f"Saved {filename} to HDFS.")
+            print("Saved {} to HDFS.".format(filename))
     finally:
         consumer.close()
 

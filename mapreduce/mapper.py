@@ -12,9 +12,11 @@ for line_number, line in enumerate(sys.stdin, start=1):
             raise ValueError("invalid product or quantity")
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
         print(
-            f"Invalid HDFS transaction on input line {line_number}: {error}",
+            "Invalid HDFS transaction on input line {}: {}".format(
+                line_number, error
+            ),
             file=sys.stderr,
         )
         raise SystemExit(1) from error
 
-    print(f"{product}\t{units}")
+    print("{}\t{}".format(product, units))

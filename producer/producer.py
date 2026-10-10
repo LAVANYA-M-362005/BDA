@@ -15,7 +15,9 @@ INPUT_FILE = Path(os.getenv("SALES_CSV", "/app/data/sales.csv"))
 
 def main():
     if not INPUT_FILE.is_file():
-        raise FileNotFoundError(f"Sales transaction CSV not found: {INPUT_FILE}")
+        raise FileNotFoundError(
+            "Sales transaction CSV not found: {}".format(INPUT_FILE)
+        )
 
     producer = connect_kafka()
 
@@ -37,7 +39,7 @@ def main():
                 units_sold = int(transaction.get("units_sold", ""))
             except (TypeError, ValueError) as error:
                 raise ValueError(
-                    f"Invalid units_sold value on CSV line {line_number}."
+                    "Invalid units_sold value on CSV line {}.".format(line_number)
                 ) from error
             if (
                 not product_name
@@ -46,8 +48,8 @@ def main():
                 or "\n" in product_name
             ):
                 raise ValueError(
-                    f"CSV line {line_number} must have a single-line product "
-                    "name and non-negative units_sold."
+                    "CSV line {} must have a single-line product name and "
+                    "non-negative units_sold.".format(line_number)
                 )
 
             transaction["product_name"] = product_name
@@ -58,8 +60,8 @@ def main():
     producer.flush()
     producer.close()
     if sent == 0:
-        raise ValueError(f"No sales transactions found in {INPUT_FILE}.")
-    print(f"Published {sent} transactions to Kafka topic '{TOPIC}'.")
+        raise ValueError("No sales transactions found in {}.".format(INPUT_FILE))
+    print("Published {} transactions to Kafka topic '{}'.".format(sent, TOPIC))
 
 
 def connect_kafka():
