@@ -1,0 +1,10 @@
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./results:/app/results:ro
+    restart: unless-stopped
